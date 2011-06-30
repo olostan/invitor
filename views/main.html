@@ -1,0 +1,32 @@
+<div align='right' class='usr'>
+Добро пожаловать, <b>${user._id}</b>
+<br />
+{{if user.mode == 'inviting'}}
+Вы все еще хотите получить инвайт
+{{else user.mode == 'invitor'}}
+Вы можете приглашать
+{{else user.mode == 'invited'}}
+Вам выслали инвайт
+{{/if}}
+(<a href='/change'>изменить это</a>)
+
+</div>
+
+<div id="main">
+{{if user.mode == "inviting"}}
+Кто-то обязательно вышлет Вам инвайт! Подождите чуть чуть.
+{{else user.mode == "invited"}}
+Кто-то выслал Вам инвайт. Если Вы не получили инвайт или хотите кого-то пригласить - <a href='/change'>измените</a> свой статус. 
+{{else}}
+
+<div id="get">
+    <span id="get-no">Пока нет желающих, попробуйте чуть позже</span>
+    <input type='button' value='Получить email для того, чтоб пригласить'/>
+</div>
+<div id="next">
+    <input type='text' id="email" value='...' />
+    <input type='button' id="invite" value='Я приглашу' />
+    <input type='button' id="no" value='Не буду приглашать' />
+</div>
+{{/if}}
+</div>
