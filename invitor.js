@@ -1,7 +1,8 @@
+var port = 8081;
+
 var openid = require('openid');
-//var url = require('url');
-//var querystring = require('querystring');
 var express = require('express');
+require('date-utils');
 
 var mongodb = require('mongodb');
 var mongoServer = new mongodb.Server("127.0.0.1", 27017, {});
@@ -29,7 +30,7 @@ var extensions = [new openid.UserInterface(),
 
 
 var relyingParty = new openid.RelyingParty(
-    'http://oni.dyndns.org:8081/verify', // Verification URL (yours)
+    'http://oni.dyndns.org:'+port+'/verify', // Verification URL (yours)
     null, // Realm (optional, specifies realm for OpenID authentication)
     false, // Use stateless verification
     false, // Strict mode
@@ -62,6 +63,11 @@ app.get('/verify',function(req,res) {
             });
 });
 
+var history = function(email,next) {
+    var logs = new mongodb.Collection(mongo,"logs");
+    logs.find({$or: [{ who:email},{whom:email}]}).toArray(next);
+}
+
 app.get("/",function(req,res) {
     if (!req.session.email) {
 	res.render('auth.html');
@@ -69,9 +75,17 @@ app.get("/",function(req,res) {
 	var collection = new mongodb.Collection(mongo, 'users');
 	collection.findOne({_id: req.session.email},function(err,user) {
 	    if (!user) res.redirect('/change');
-	    else {	    
+	    else {
 		req.session.user = user;
-		res.render("main.html", { user: user });
+    		var map = function() { emit(this.mode,1);};
+                var reduce = function(k,v) { var r = 0;v.forEach(function(v) { r+=v;});return r;};
+                collection.mapReduce(map,reduce,{out: {inline:1}},function(err,stats) {
+		    var stat = { invited: 0, waiting: 0, invitors: 0 };
+		    stats.forEach(function(v) { stat[v._id]=v.value; });
+		    history(req.session.email,function(err,logs) {
+                	res.render("main.html", { user: user, stat:stat, logs:logs });
+		    });
+                });
 	    }
 	});
     }
@@ -93,6 +107,7 @@ app.post('/change',function(req,res) {
     );
 });
 app.get("/get/:email?", function(req,res) {
+    if (!req.session.email) { res.send("{}"); return; }
     var collection = new mongodb.Collection(mongo, 'users');
     if (req.params.email) {
 	collection.update({_id:req.params.email},{$set: { mode: 'invited' }});
@@ -114,5 +129,5 @@ app.get("/get/:email?", function(req,res) {
 new mongodb.Db('invitor', mongoServer, {}).open(function (error, client) {
   if (error) throw error;
   mongo = client;
-  app.listen(8081);
+  app.listen(port);
 });

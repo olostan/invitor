@@ -29,4 +29,17 @@
     <input type='button' id="no" value='Не буду приглашать' />
 </div>
 {{/if}}
+
+{{if logs}}
+<div id="hist">
+История:
+<ul>
+{{each logs}}
+<li>${when.toFormat("DD/MM/YYYY HH24:MI")}: <b>${who}</b> пригласил(а) <b>${whom}</b></li>
+{{/each}}
+</ul>
 </div>
+{{/if}}
+
+</div>
+<div id="stat">На данный момент <b>${stat.invited?stat.invited:"нет"}</b> приглашенных, <b>${stat.inviting?stat.inviting:"нет"}</b> ожидаюших инвайта, <b>${stat.invitor?stat.invitor:"никого из"}</b> тех кто может пригласить. </div>
