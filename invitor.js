@@ -1,6 +1,6 @@
 var openid = require('openid');
-var url = require('url');
-var querystring = require('querystring');
+//var url = require('url');
+//var querystring = require('querystring');
 var express = require('express');
 
 var mongodb = require('mongodb');
@@ -40,15 +40,16 @@ app.register(".html", require("jqtpl").express);
 app.use(express.cookieParser());
 app.use(express.session({ secret: "coni secret !22" }));
 app.use(express.bodyParser());
+app.use(express.errorHandler({dumpExceptions: true, showStack: true}));
 
 app.get('/authenticate',function(req,res) {
   var identifier = "http://www.google.com/accounts/o8/id";
   // Resolve identifier, associate, and build authentication URL
   relyingParty.authenticate(identifier, false, function(error, authUrl)
   {
-            if (error) { res.writeHead(200); res.end('Authentication failed: ' + error); }
-            else if (!authUrl)  { res.writeHead(200); res.end('Authentication failed'); }
-            else { res.writeHead(302, { Location: authUrl }); res.end();     }
+            if (error) { res.send('Authentication failed: ' + error,200); }
+            else if (!authUrl)  { res.send('Authentication failed',200); }
+            else { res.redirect(authUrl);  }
   });
 });
 app.get('/verify',function(req,res) {
@@ -64,14 +65,7 @@ app.get('/verify',function(req,res) {
 app.get("/",function(req,res) {
     if (!req.session.email) {
 	res.render('auth.html');
-/*
-            res.writeHead(200);
-            res.end('<!DOCTYPE html><html><body>'
-                + '<form method="get" action="/authenticate">'
-                + '<input type="submit" value="Login using Google" />'
-                + '</form></body></html>');*/
     } else {
-//	res.send("Wellcome "+req.session.email);
 	var collection = new mongodb.Collection(mongo, 'users');
 	collection.findOne({_id: req.session.email},function(err,user) {
 	    if (!user) res.redirect('/change');
@@ -86,13 +80,17 @@ app.get('/style.css', express.static(__dirname+'/views/'));
 app.get('/main.js', express.static(__dirname+'/views/'));
 app.get('/change',function(req,res) {
     if (!req.session.email) res.redirect("/");
-    res.render('change.html');
+    else res.render('change.html');
 });
 app.post('/change',function(req,res) {
     if (!req.session.email) { res.redirect("/"); return }
     if (!req.body.usermode) { res.render("change.html"); return }
     var collection = new mongodb.Collection(mongo, 'users');
-    collection.save({_id:req.session.email, mode: req.body.usermode, random: Math.random() },{safe:true}, function(err,i) { res.redirect('/'); });
+    collection.save(
+	    {_id:req.session.email, mode: req.body.usermode, random: Math.random() },
+	    {safe:true}, 
+	    function(err,i) { res.redirect('/'); }
+    );
 });
 app.get("/get/:email?", function(req,res) {
     var collection = new mongodb.Collection(mongo, 'users');
@@ -101,12 +99,12 @@ app.get("/get/:email?", function(req,res) {
 	var logs = new mongodb.Collection(mongo, 'logs');
 	logs.insert({when: new Date(),who:req.session.email,what:"inv",whom: req.params.email});
     }
-    rand = Math.random();
+    var rand = Math.random();
     collection.findOne({ mode:'inviting', random: { $gte : rand }},function(err,user) {
 	if (!user) {
 	  collection.findOne({ mode:'inviting', random: { $lte : rand }},function(err,user) {
 	    if (!user) res.send("{}");
-	    else { res.send(user);}
+	    else  res.send(user);
 	  });
 	} else res.send(user);
     });
@@ -115,8 +113,6 @@ app.get("/get/:email?", function(req,res) {
 
 new mongodb.Db('invitor', mongoServer, {}).open(function (error, client) {
   if (error) throw error;
-//  console.log("MongoDB opened");
   mongo = client;
-
   app.listen(8081);
 });

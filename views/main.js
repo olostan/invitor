@@ -1,6 +1,6 @@
 $(function() {
     function next(arg) {
-	$.getJSON('/get'+(arg?("/"+arg):""),function(data) {
+	$.getJSON('/get'+(arg?("/"+encodeURI(arg)):""),function(data) {
 	    if (data._id) {
 		$("#email").val(data._id);
 		$("#next").show();
